@@ -96,7 +96,9 @@ type MarkFilter struct {
 	FolderID *int64
 	FeedID   *int64
 
-	Before *time.Time
+	Before      *time.Time
+	BeforeID    *int64
+	OldestFirst bool
 }
 
 type ItemList []Item
@@ -317,11 +319,37 @@ func (s *Storage) UpdateItemStatus(item_id int64, status ItemStatus) bool {
 }
 
 func (s *Storage) MarkItemsRead(filter MarkFilter) bool {
-	predicate, args := listQueryPredicate(ItemFilter{
-		FolderID: filter.FolderID,
-		FeedID:   filter.FeedID,
-		Before:   filter.Before,
-	}, false)
+	cond := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	if filter.FolderID != nil {
+		cond = append(cond, "i.feed_id in (select id from feeds where folder_id = ?)")
+		args = append(args, *filter.FolderID)
+	}
+	if filter.FeedID != nil {
+		cond = append(cond, "i.feed_id = ?")
+		args = append(args, *filter.FeedID)
+	}
+	if filter.Before != nil {
+		cond = append(cond, "i.date < ?")
+		args = append(args, filter.Before)
+	}
+	if filter.BeforeID != nil {
+		// When sorting newest first (default), "previous" means >= (newer items)
+		// When sorting oldest first, "previous" means <= (older items)
+		operator := ">="
+		if filter.OldestFirst {
+			operator = "<="
+		}
+		cond = append(cond, fmt.Sprintf("(i.date, i.id) %s (select date, id from items where id = ?)", operator))
+		args = append(args, *filter.BeforeID)
+	}
+
+	predicate := "1"
+	if len(cond) > 0 {
+		predicate = strings.Join(cond, " and ")
+	}
+
 	query := fmt.Sprintf(`
 		update items as i set status = %d
 		where %s and i.status != %d

@@ -400,6 +400,11 @@ func (s *Server) handleItemList(c *router.Context) {
 		if feedID, err := c.QueryInt64("feed_id"); err == nil {
 			filter.FeedID = &feedID
 		}
+		if beforeID, err := c.QueryInt64("before_id"); err == nil {
+			filter.BeforeID = &beforeID
+		}
+		query := c.Req.URL.Query()
+		filter.OldestFirst = query.Get("oldest_first") == "true"
 		s.db.MarkItemsRead(filter)
 		c.Out.WriteHeader(http.StatusOK)
 	} else {

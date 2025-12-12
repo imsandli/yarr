@@ -273,6 +273,97 @@ func TestMarkItemsRead(t *testing.T) {
 	}
 }
 
+func TestMarkItemsReadBeforeID(t *testing.T) {
+	// Test marking items as read from the selected item and all "previous" items
+	// "previous" depends on sort order:
+	// - Newest first (default): previous = newer items (date >= selected)
+	// - Oldest first: previous = older items (date <= selected)
+	var read ItemStatus = READ
+
+	// Test 1: Mark items from item121 and newer (newest first / default)
+	db1 := testDB()
+	testItemsSetup(db1)
+	item121 := getItem(db1, "item121")
+	db1.MarkItemsRead(MarkFilter{BeforeID: &item121.Id, OldestFirst: false})
+	have := getItemGuids(db1.ListItems(ItemFilter{Status: &read}, 10, false, false))
+	want := []string{
+		"item112", "item121", "item122",
+		"item211", "item011", "item012",
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Logf("Test 1: Mark items from item121 and newer (newest first)")
+		t.Logf("want: %#v", want)
+		t.Logf("have: %#v", have)
+		t.Fail()
+	}
+
+	// Test 2: Mark items from item121 and older (oldest first)
+	db2 := testDB()
+	testItemsSetup(db2)
+	item121_2 := getItem(db2, "item121")
+	db2.MarkItemsRead(MarkFilter{BeforeID: &item121_2.Id, OldestFirst: true})
+	have = getItemGuids(db2.ListItems(ItemFilter{Status: &read}, 10, false, false))
+	want = []string{
+		"item111", "item112", "item121", "item122",
+		"item211", "item012",
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Logf("Test 2: Mark items from item121 and older (oldest first)")
+		t.Logf("want: %#v", want)
+		t.Logf("have: %#v", have)
+		t.Fail()
+	}
+
+	// Test 3: Mark items in feed11 from item112 and newer (newest first)
+	db3 := testDB()
+	scope3 := testItemsSetup(db3)
+	item112 := getItem(db3, "item112")
+	db3.MarkItemsRead(MarkFilter{FeedID: &scope3.feed11.Id, BeforeID: &item112.Id, OldestFirst: false})
+	have = getItemGuids(db3.ListItems(ItemFilter{Status: &read}, 10, false, false))
+	want = []string{
+		"item112", "item122",
+		"item211", "item012",
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Logf("Test 3: Mark items in feed11 from item112 and newer (newest first)")
+		t.Logf("want: %#v", want)
+		t.Logf("have: %#v", have)
+		t.Fail()
+	}
+
+	// Test 4: Mark items in folder1 from item112 and older (oldest first)
+	db4 := testDB()
+	scope4 := testItemsSetup(db4)
+	item112_4 := getItem(db4, "item112")
+	db4.MarkItemsRead(MarkFilter{FolderID: &scope4.folder1.Id, BeforeID: &item112_4.Id, OldestFirst: true})
+	have = getItemGuids(db4.ListItems(ItemFilter{Status: &read}, 10, false, false))
+	want = []string{
+		"item111", "item112", "item122",
+		"item211", "item012",
+	}
+	if !reflect.DeepEqual(have, want) {
+		t.Logf("Test 4: Mark items in folder1 from item112 and older (oldest first)")
+		t.Logf("want: %#v", want)
+		t.Logf("have: %#v", have)
+		t.Fail()
+	}
+
+	// Test 5: Verify starred items are never marked as read
+	db5 := testDB()
+	testItemsSetup(db5)
+	item011 := getItem(db5, "item011")
+	db5.MarkItemsRead(MarkFilter{BeforeID: &item011.Id, OldestFirst: false})
+	starred := STARRED
+	haveStarred := getItemGuids(db5.ListItems(ItemFilter{Status: &starred}, 10, false, false))
+	wantStarred := []string{"item113", "item212", "item013"}
+	if !reflect.DeepEqual(haveStarred, wantStarred) {
+		t.Logf("Test 5: Verify starred items are preserved")
+		t.Logf("want: %#v", wantStarred)
+		t.Logf("have: %#v", haveStarred)
+		t.Fail()
+	}
+}
+
 func TestDeleteOldItems(t *testing.T) {
 	extraItems := 10
 

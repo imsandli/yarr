@@ -527,6 +527,41 @@ var vm = new Vue({
         vm.refreshStats()
       })
     },
+    markPreviousItemsRead: function() {
+      if (!this.itemSelected) return
+
+      // Find the current item position
+      var itemPosition = vm.items.findIndex(function(x) { return x.id === vm.itemSelected })
+      var isLastItem = itemPosition === vm.items.length - 1
+
+      var query = this.getItemsQuery()
+      query.before_id = this.itemSelected
+      // Pass sort direction to determine which items are "previous"
+      if (!this.itemSortNewestFirst) {
+        query.oldest_first = true
+      }
+      api.items.mark_read(query).then(function() {
+        // If this was the last item, behave like "Mark All Read"
+        if (isLastItem) {
+          vm.items = []
+          vm.itemsPage = {'cur': 1, 'num': 1}
+          vm.itemSelected = null
+          vm.itemsHasMore = false
+          vm.feedSelected = null
+          vm.refreshStats()
+        } else {
+          // Otherwise, refresh and select the first item
+          vm.refreshItems().then(function() {
+            if (vm.items.length > 0) {
+              vm.itemSelected = vm.items[0].id
+            } else {
+              vm.itemSelected = null
+            }
+          })
+          vm.refreshStats()
+        }
+      })
+    },
     toggleFolderExpanded: function(folder) {
       folder.is_expanded = !folder.is_expanded
       api.folders.update(folder.id, {is_expanded: folder.is_expanded})

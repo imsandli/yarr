@@ -339,6 +339,12 @@
                     <span class="icon">{% inline "external-link.svg" %}</span>
                 </a>
                 <div class="flex-grow-1"></div>
+                <button class="toolbar-item"
+                        @click="markPreviousItemsRead()"
+                        :disabled="!itemSelected"
+                        title="Mark Previous as Read">
+                    <span class="icon">{% inline "check-list.svg" %}</span>
+                </button>
                 <button class="toolbar-item" @click="navigateToItem(-1)" title="Previous Article" :disabled="itemSelected == items[0].id">
                     <span class="icon">{% inline "chevron-left.svg" %}</span>
                 </button>

@@ -37,3 +37,5 @@ See more:
 ## credits
 
 [Feather](http://feathericons.com/) for icons.
+
+"Mark All As Read" icon from [Lightning Design Utility Icons](https://www.svgrepo.com/collection/lightning-design-utility-icons/) by Salesforce (CC Attribution License).
