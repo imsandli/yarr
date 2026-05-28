@@ -216,7 +216,7 @@ func TestRSSTitleHTMLTags(t *testing.T) {
 	`))
 	have := []string{feed.Items[0].Title, feed.Items[1].Title}
 	want := []string{"title in p", "very strong title"}
-	for i := 0; i < len(want); i++ {
+	for i := range want {
 		if want[i] != have[i] {
 			t.Errorf("title doesn't match\nwant: %#v\nhave: %#v\n", want[i], have[i])
 		}
@@ -241,10 +241,39 @@ func TestRSSIsPermalink(t *testing.T) {
 			URL:  "http://example.com/posts/1",
 		},
 	}
-	for i := 0; i < len(want); i++ {
+	for i := range want {
 		if !reflect.DeepEqual(want, have) {
 			t.Errorf("Failed to handle isPermalink\nwant: %#v\nhave: %#v\n", want[i], have[i])
 		}
+	}
+}
+
+// https://github.com/nkanaev/yarr/issues/284
+func TestRSSEnclosureImage(t *testing.T) {
+	feed, _ := Parse(strings.NewReader(`
+		<?xml version="1.0" encoding="UTF-8"?>
+		<rss version="2.0">
+			<channel>
+				<item>
+					<title>Post with image</title>
+					<link>http://example.com/post/1</link>
+					<enclosure url="http://example.com/photo.jpg" type="image/jpeg" length="123456"/>
+				</item>
+			</channel>
+		</rss>
+	`))
+	if len(feed.Items[0].MediaLinks) != 1 {
+		t.Fatalf("Expected 1 media link, got %d: %#v", len(feed.Items[0].MediaLinks), feed.Items[0].MediaLinks)
+	}
+	have := feed.Items[0].MediaLinks[0]
+	want := MediaLink{
+		URL:  "http://example.com/photo.jpg",
+		Type: "image",
+	}
+	if !reflect.DeepEqual(want, have) {
+		t.Logf("want: %#v", want)
+		t.Logf("have: %#v", have)
+		t.FailNow()
 	}
 }
 
@@ -274,9 +303,21 @@ func TestRSSMultipleMedia(t *testing.T) {
 			GUID: "http://example.com/posts/1",
 			URL:  "http://example.com/posts/1",
 			MediaLinks: []MediaLink{
-				{URL: "https://example.com/path/to/image1.png", Type: "image", Description: "description 1"},
-				{URL: "https://example.com/path/to/image2.png", Type: "image", Description: "description 2"},
-				{URL: "https://example.com/path/to/video1.mp4", Type: "video", Description: "video description"},
+				{
+					URL:         "https://example.com/path/to/image1.png",
+					Type:        "image",
+					Description: "description 1",
+				},
+				{
+					URL:         "https://example.com/path/to/image2.png",
+					Type:        "image",
+					Description: "description 2",
+				},
+				{
+					URL:         "https://example.com/path/to/video1.mp4",
+					Type:        "video",
+					Description: "video description",
+				},
 			},
 		},
 	}

@@ -20,12 +20,12 @@ type rssFeed struct {
 }
 
 type rssItem struct {
-	GUID        rssGuid        `xml:"guid"`
-	Title       string         `xml:"title"`
+	GUID        rssGuid        `xml:"rss guid"`
+	Title       string         `xml:"rss title"`
 	Link        string         `xml:"rss link"`
 	Description string         `xml:"rss description"`
-	PubDate     string         `xml:"pubDate"`
-	Enclosures  []rssEnclosure `xml:"enclosure"`
+	PubDate     string         `xml:"rss pubDate"`
+	Enclosures  []rssEnclosure `xml:"rss enclosure"`
 
 	DublinCoreDate string `xml:"http://purl.org/dc/elements/1.1/ date"`
 	ContentEncoded string `xml:"http://purl.org/rss/1.0/modules/content/ encoded"`
@@ -78,11 +78,17 @@ func ParseRSS(r io.Reader) (*Feed, error) {
 		for _, e := range srcitem.Enclosures {
 			if strings.HasPrefix(e.Type, "audio/") {
 				podcastURL := e.URL
-				if srcitem.OrigEnclosureLink != "" && strings.Contains(podcastURL, path.Base(srcitem.OrigEnclosureLink)) {
+				if srcitem.OrigEnclosureLink != "" &&
+					strings.Contains(podcastURL, path.Base(srcitem.OrigEnclosureLink)) {
 					podcastURL = srcitem.OrigEnclosureLink
 				}
 				mediaLinks = append(mediaLinks, MediaLink{URL: podcastURL, Type: "audio"})
 				break
+			}
+		}
+		for _, e := range srcitem.Enclosures {
+			if strings.HasPrefix(e.Type, "image/") {
+				mediaLinks = append(mediaLinks, MediaLink{URL: e.URL, Type: "image"})
 			}
 		}
 
@@ -92,11 +98,15 @@ func ParseRSS(r io.Reader) (*Feed, error) {
 		}
 
 		dstfeed.Items = append(dstfeed.Items, Item{
-			GUID:       firstNonEmpty(srcitem.GUID.GUID, srcitem.Link),
-			Date:       dateParse(firstNonEmpty(srcitem.DublinCoreDate, srcitem.PubDate)),
-			URL:        firstNonEmpty(srcitem.OrigLink, srcitem.Link, permalink),
-			Title:      srcitem.Title,
-			Content:    firstNonEmpty(srcitem.ContentEncoded, srcitem.Description, srcitem.firstMediaDescription()),
+			GUID:  firstNonEmpty(srcitem.GUID.GUID, srcitem.Link),
+			Date:  dateParse(firstNonEmpty(srcitem.DublinCoreDate, srcitem.PubDate)),
+			URL:   firstNonEmpty(srcitem.OrigLink, srcitem.Link, permalink),
+			Title: srcitem.Title,
+			Content: firstNonEmpty(
+				srcitem.ContentEncoded,
+				srcitem.Description,
+				srcitem.firstMediaDescription(),
+			),
 			MediaLinks: mediaLinks,
 		})
 	}
